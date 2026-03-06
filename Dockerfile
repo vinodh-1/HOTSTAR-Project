@@ -1,13 +1,26 @@
-# Use official Tomcat base image
-FROM tomcat:9.0
+ # ---------- Stage 1 : Build ----------
+FROM maven:3.9.9-eclipse-temurin-17-alpine AS build
 
-# Remove default ROOT application
-RUN rm -rf /usr/local/tomcat/webapps/ROOT
+WORKDIR /app
 
-# Copy generated WAR file into webapps as ROOT
-COPY target/*.war /usr/local/tomcat/webapps/ROOT.war
+# Copy project files
+COPY pom.xml .
+COPY src ./src
 
-# Expose port 8080
+# Build WAR file
+RUN mvn clean package -DskipTests
+
+
+# ---------- Stage 2 : Runtime ----------
+FROM tomcat:9.0-alpine
+
+# Remove default ROOT app
+RUN rm -rf /usr/local/tomcat/webapps/*
+
+# Copy WAR file from build stage
+COPY --from=build /app/target/*.war /usr/local/tomcat/webapps/ROOT.war
+
+# Expose Tomcat port
 EXPOSE 8080
 
 # Start Tomcat
